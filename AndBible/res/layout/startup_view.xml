@@ -39,7 +39,7 @@
 			android:gravity="left"
 			android:padding="5dip"
 			android:text="@string/help_text"
-			android:textSize="13dip"
+			android:textSize="13sp"
 			android:textStyle="italic"
 			android:layout_above="@+id/versionText"/>
 

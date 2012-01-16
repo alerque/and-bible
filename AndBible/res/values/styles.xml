@@ -6,7 +6,7 @@
       The copyright to this program is held by it's author.
 -->
 <resources>
-	<style name="AndBibleTheme" parent="@android:style/Theme.Light">
+	<style name="AndBibleTheme" parent="@android:style/Theme.DeviceDefault">
 		<item name="android:windowTitleSize">30dp</item>
 	</style>
 
