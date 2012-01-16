@@ -2,6 +2,7 @@
 <!-- Application text
  
  @author Martin Denham [mjdenham at gmail dot com]
+ @author Caleb Maclennan [caleb@alerque.com]
  @see gnu.lgpl.License for license details.<br>
       The copyright to this program is held by it's author.
 -->
@@ -28,8 +29,8 @@
     <string name="no_sdcard_error">Please insert an SD card and start And Bible again.</string>
 
     <!-- main menu -->
-    <string name="chooseBook">Document</string>
-    <string name="selectPassage">Passage</string>
+    <string name="chooseBook">Documents</string>
+    <string name="selectPassage">Passages</string>
     <string name="search">Find</string>
     <string name="settings">Settings</string>
     <string name="history">History</string>
