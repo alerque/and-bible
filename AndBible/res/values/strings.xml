@@ -124,7 +124,8 @@
     <string name="download_confirmation">Download a bible from the internet?</string>
     <string name="download_source_message">Documents are downloaded from\nhttp://www.crosswire.org\n&amp; http://xiphos.org</string>
     <string name="download_document_confirm_prefix">"Download "</string>
-    <string name="refresh_book_list">Refreshing list of available documents</string>
+    <string name="download_refreshing_book_list">Refreshing list of available documents</string>
+    <string name="download_refresh_book_list_menu_item">Refresh</string>
     <string name="error_downloading">An error occurred downloading.  Please check your internet connection.</string>
     <string name="no_internet_connection">Could not connect to the internet</string>
     <string name="storage_space_warning">Insufficient local storage space.</string>
@@ -140,12 +141,13 @@
     <string name="rdg_plan_set_start_jan1">Start Jan 1</string>
     <string name="done">Done</string>
     <string name="reset">Reset</string>
-    <string name="rdg_plan_m1gospels">Through the Gospels in a month</string>
+    <string name="rdg_plan_y1ntpspr">New Testament, Psalms, and Proverbs in a year</string>
     <string name="rdg_plan_y1ot1nt1_chronological">Through the Bible chronologically in a year</string>
     <string name="rdg_plan_y1ot1nt1_OTandNT">Through the bible in a year - OT and NT</string>
     <string name="rdg_plan_y1ot1nt1_OTthenNT">Through the bible in a year - OT then NT</string>
     <string name="rdg_plan_y1ot1nt2_mcheyne">Through the bible in a year (M\'Cheyne)</string>
-        
+    <!-- string name="rdg_plan_m1gospels">Through the Gospels in a month</string -->
+    
     <!-- Document context menu -->
     <string name="delete">Delete</string>
     <string name="delete_index">Delete search index</string>

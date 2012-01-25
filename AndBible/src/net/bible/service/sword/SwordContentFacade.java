@@ -17,6 +17,7 @@ import net.bible.service.common.CommonUtils;
 import net.bible.service.common.Constants;
 import net.bible.service.common.Logger;
 import net.bible.service.common.ParseException;
+import net.bible.service.device.ScreenSettings;
 import net.bible.service.font.FontControl;
 import net.bible.service.format.FormattedDocument;
 import net.bible.service.format.HtmlMessageFormatter;
@@ -344,7 +345,7 @@ public class SwordContentFacade {
 					osisToHtmlParameters.setShowStrongs(showStrongs);
 					osisToHtmlParameters.setShowMorphology(showStrongs && preferences.getBoolean("show_morphology_pref", false));
 				}
-				if (preferences.getBoolean("night_mode_pref", false)) {
+				if (ScreenSettings.isNightMode()) {
 					osisToHtmlParameters.setExtraStylesheet(SharedConstants.NIGHT_MODE_STYLESHEET);
 				}
 				if (book.getBookCategory().equals(BookCategory.DICTIONARY)) {
