@@ -71,6 +71,7 @@ public class OsisToHtmlSaxHandler extends OsisSaxHandler {
 	class VerseInfo {
 		int currentVerseNo;
 		int currentVersePosition;
+		boolean isTextSinceVerse = false;
 	}
 
 	private static final String HEBREW_LANGUAGE_CODE = "he";
@@ -175,6 +176,8 @@ public class OsisToHtmlSaxHandler extends OsisSaxHandler {
 			verseHandler.startAndUpdateVerse(attrs);
 			bookmarkMarker.start();
 			myNoteMarker.start();
+			// record that we are into a new verse
+			verseInfo.isTextSinceVerse = false;
 		} else if (name.equals(OSISUtil.OSIS_ELEMENT_TITLE)) {
 			titleHandler.start(attrs);		
 		} else if (name.equals(OSISUtil.OSIS_ELEMENT_NOTE)) {
@@ -185,6 +188,15 @@ public class OsisToHtmlSaxHandler extends OsisSaxHandler {
 			write(HTML.BR);
 		} else if (name.equals(OSISUtil.OSIS_ELEMENT_L)) {
 			lHandler.startL(attrs);
+		} else if (name.equals("div")) {
+			String type = attrs.getValue("type");
+			if ("paragraph".equals(type)) {
+				// ignore sID start paragraph sID because it often comes after the verse no and causes a gap between verse no verse text
+				String eID = attrs.getValue("eID");
+				if (eID!=null) {
+					write("<p />");
+				}
+			}
 		} else if (name.equals(OSISUtil.OSIS_ELEMENT_P)) {
 			write("<p>");
 		} else if (name.equals(OSISUtil.OSIS_ELEMENT_Q)) {
@@ -195,8 +207,8 @@ public class OsisToHtmlSaxHandler extends OsisSaxHandler {
 			String type = attrs.getValue(OSISUtil.OSIS_ATTR_TYPE);
 			if (StringUtils.isNotEmpty(type)) {
 				if (type.equals("line") || type.equals("x-p")) {
-					//e.g. NETtext Mt 4:14
-					write(HTML.BR);
+					//e.g. NETtext Mt 4:14; KJV Gen 1:6
+					writeOptionallyBeforeVerse(HTML.BR);
 				}
 			}
 		} else if (name.equals("transChange")) {
@@ -255,11 +267,29 @@ public class OsisToHtmlSaxHandler extends OsisSaxHandler {
 	public void characters(char buf[], int offset, int len) {
 		String s = new String(buf, offset, len);
 		
+		// record that we are now beyond the verse, but do it quickly so as not to slow down parsing
+		verseInfo.isTextSinceVerse = verseInfo.isTextSinceVerse ||
+										len>2 ||
+										StringUtils.isNotBlank(s);
+		
 		if (textPreprocessor!=null) {
 			s = textPreprocessor.process(s);
 		}
 		
 		write(s);
+	}
+
+	/** allow line breaks and titles to be moved before verse number
+	 */
+	protected void writeOptionallyBeforeVerse(String s) {
+		boolean writeBeforeVerse = !verseInfo.isTextSinceVerse;
+		if (writeBeforeVerse) {
+			getWriter().beginInsertAt(verseInfo.currentVersePosition);
+		}
+		getWriter().write(s);
+		if (writeBeforeVerse) {
+			getWriter().finishInserting();
+		}
 	}
 
 	/*

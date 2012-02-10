@@ -4,9 +4,14 @@ import java.util.List;
 import java.util.Locale;
 
 import net.bible.android.activity.R;
+import net.bible.android.control.event.apptobackground.AppToBackgroundEvent;
+import net.bible.android.control.event.apptobackground.AppToBackgroundListener;
+import net.bible.android.control.page.CurrentPageManager;
 import net.bible.android.device.ProgressNotificationManager;
+import net.bible.android.view.activity.base.CurrentActivityHolder;
 import net.bible.android.view.activity.base.Dialogs;
 import net.bible.service.common.CommonUtils;
+import net.bible.service.device.ScreenSettings;
 import net.bible.service.sword.SwordDocumentFacade;
 
 import org.apache.commons.lang.StringUtils;
@@ -28,6 +33,10 @@ public class BibleApplication extends Application{
 	private Locale overrideLocale;
 	
 	private static final String TEXT_SIZE_PREF = "text_size_pref";
+	
+	// this was moved from the MainBibleActivity and has always been called this
+	private static final String saveStateTag = "MainBibleActivity";
+
 	private static BibleApplication singleton;
 	private static final String TAG = "BibleApplication";
 	
@@ -58,7 +67,37 @@ public class BibleApplication extends Application{
 		allowLocaleOverride();
 		Locale locale = Locale.getDefault();
 		Log.i(TAG, "Locale language:"+locale.getLanguage()+" Variant:"+locale.getDisplayName());
+		
+		// restore state from previous invocation
+    	restoreState();
+    	
+		// register to save state when moved to background
+    	CurrentActivityHolder.getInstance().addAppToBackgroundListener(new AppToBackgroundListener() {
+			@Override
+			public void applicationNowInBackground(AppToBackgroundEvent e) {
+				saveState();
+			}
+		});
 	}
+
+    /** restore current page and document state */
+    private void restoreState() {
+    	try {
+        	Log.i(TAG, "Restore instance state");
+        	SharedPreferences settings = getSharedPreferences(saveStateTag, 0);
+    		CurrentPageManager.getInstance().restoreState(settings);
+    	} catch (Exception e) {
+    		Log.e(TAG, "Restore error", e);
+    	}
+    }
+    
+    /** save current page and document state */
+	protected void saveState() {
+    	Log.i(TAG, "Saving instance state");
+    	SharedPreferences settings = getSharedPreferences(saveStateTag, 0);
+		CurrentPageManager.getInstance().saveState(settings);
+	}
+
 
 	/** Allow user interface locale override by changing Settings
 	 */
@@ -142,7 +181,15 @@ public class BibleApplication extends Application{
 					}
 				}
 			}
-			
+			// add new  
+			if (prevInstalledVersion < 61) {
+				if (prefs.contains(ScreenSettings.NIGHT_MODE_PREF_NO_SENSOR)) {
+					String pref2Val = prefs.getBoolean(ScreenSettings.NIGHT_MODE_PREF_NO_SENSOR, false) ? "true" : "false";
+					Log.d(TAG, "Setting new night mode pref list value:"+pref2Val);
+					editor.putString(ScreenSettings.NIGHT_MODE_PREF_WITH_SENSOR, pref2Val);
+				}
+			}
+
 			editor.putInt("version", CommonUtils.getApplicationVersionNumber());
 			editor.commit();
 			Log.d(TAG, "Finished all Upgrading");

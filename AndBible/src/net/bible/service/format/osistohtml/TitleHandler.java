@@ -3,6 +3,7 @@ package net.bible.service.format.osistohtml;
 import net.bible.service.common.Logger;
 import net.bible.service.format.osistohtml.OsisToHtmlSaxHandler.VerseInfo;
 
+import org.apache.commons.lang.StringUtils;
 import org.crosswire.jsword.book.OSISUtil;
 import org.xml.sax.Attributes;
 
@@ -26,7 +27,10 @@ public class TitleHandler {
 	
 	private OsisToHtmlParameters parameters;
 	
-	private boolean isHeaderWritten;
+	private boolean isShowTitle;
+	
+	private boolean isMoveBeforeVerse;
+	private static final String PREVERSE = "preverse"; // the full string is 'x-preverse' but we just check for contains for extra tolerance
 	
 	@SuppressWarnings("unused")
 	private static final Logger log = new Logger("TitleHandler");
@@ -46,13 +50,18 @@ public class TitleHandler {
 		//JSword adds the chapter no at the top but hide this because the chapter is in the And Bible header
 		boolean addedByJSword = attrs.getLength()==1 && OSISUtil.GENERATED_CONTENT.equals(attrs.getValue(OSISUtil.OSIS_ATTR_TYPE));
 		// otherwise show if user wants Titles or the title is canonical
-		isHeaderWritten = !addedByJSword && 
+		isShowTitle = !addedByJSword && 
 							(parameters.isShowTitles() || 
 							 "true".equalsIgnoreCase(attrs.getValue(OSISUtil.OSIS_ATTR_CANONICAL)));
 		
-		if (isHeaderWritten) {
-			// section Titles normally come before a verse, so overwrite the, already written verse, which is rewritten on writer.finishedInserting
-			writer.beginInsertAt(verseInfo.currentVersePosition);
+		if (isShowTitle) {
+			// ESV has subType butNETtext has lower case subtype so concatenate both and search with contains() 
+			String subtype = attrs.getValue(OSISUtil.OSIS_ATTR_SUBTYPE)+attrs.getValue(OSISUtil.OSIS_ATTR_SUBTYPE.toLowerCase());
+			isMoveBeforeVerse = StringUtils.containsIgnoreCase(subtype, PREVERSE) || !verseInfo.isTextSinceVerse;
+			if (isMoveBeforeVerse) {
+				// section Titles normally come before a verse, so overwrite the, already written verse, which is rewritten on writer.finishedInserting
+				writer.beginInsertAt(verseInfo.currentVersePosition);
+			}
 			writer.write("<h1>");
 		} else {
 			writer.setDontWrite(true);
@@ -60,9 +69,11 @@ public class TitleHandler {
 	}
 
 	public void end() {
-		if (isHeaderWritten) {
+		if (isShowTitle) {
 			writer.write("</h1>");
-			writer.finishInserting();
+			if (isMoveBeforeVerse) {
+				writer.finishInserting();
+			}
 		} else {
 			writer.setDontWrite(false);
 		}

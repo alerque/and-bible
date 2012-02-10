@@ -13,7 +13,7 @@ import android.view.Display;
 import android.view.Surface;
 import android.view.WindowManager;
 
-/** The WebView component that shows teh main bible and commentary text
+/** Manage the logic behind tilt-to-scroll
  * 
  * @author Martin Denham [mjdenham at gmail dot com]
  * @see gnu.lgpl.License for license details.<br>
@@ -31,11 +31,13 @@ public class PageTiltScrollControl {
 	private int mNoScrollViewingPitch = -38;
 	private boolean mNoScrollViewingPitchCalculated = false;
 	
-	private static final int NO_SCROLL_VIEWING_TOLERANCE = 1; //3;
+	private static final int NO_SCROLL_VIEWING_TOLERANCE = 2; //3;
 	private static final int NO_SPEED_INCREASE_VIEWING_TOLERANCE = 0; //6;
 	
 	// this is decreased (subtracted from) to speed up scrolling
-	private static int BASE_TIME_BETWEEN_SCROLLS = 70; //40;
+	private static int BASE_TIME_BETWEEN_SCROLLS = 60; //70(jerky) 40((fast);
+
+	private static int MIN_TIME_BETWEEN_SCROLLS = 4;
 	
 	// current pitch of phone - varies dynamically
 	private float[] mOrientationValues;
@@ -44,6 +46,8 @@ public class PageTiltScrollControl {
 	// needed to find if screen switches to landscape and must different sensor value
 	private Display mDisplay;
 	
+	public static final String TILT_TO_SCROLL_PREFERENCE_KEY = "tilt_to_scroll_pref";
+
 	@SuppressWarnings("unused")
 	private static final String TAG = "TiltScrollControl";
 	
@@ -88,7 +92,7 @@ public class PageTiltScrollControl {
 			}
 		}
 		if (mIsTiltScrollEnabled) {
-			tiltScrollInfo.delayToNextScroll = Math.max(0,BASE_TIME_BETWEEN_SCROLLS-(3*speedUp));
+			tiltScrollInfo.delayToNextScroll = Math.max(MIN_TIME_BETWEEN_SCROLLS, BASE_TIME_BETWEEN_SCROLLS-(3*speedUp));
 		}
 		return tiltScrollInfo;
 	}
@@ -97,9 +101,8 @@ public class PageTiltScrollControl {
 	 */
 	public boolean enableTiltScroll(boolean enable) {
 		// Android 2.1 does not have Display.getRotation so disable tilt-scroll for 2.1 
-		if (!CommonUtils.getSharedPreferences().getBoolean("tilt_to_scroll_pref", true) || 
-			!isOrientationSensor() ||
-			!CommonUtils.isFroyoPlus()) {
+		if (!CommonUtils.getSharedPreferences().getBoolean(TILT_TO_SCROLL_PREFERENCE_KEY, false) || 
+			!isTiltSensingPossible()) {
 			return false;
 		} else if (mIsTiltScrollEnabled != enable) {
 			mIsTiltScrollEnabled = enable;
@@ -185,6 +188,13 @@ public class PageTiltScrollControl {
 		public void onAccuracyChanged(Sensor sensor, int accuracy) {
 		}
 	};
+
+	/** return true if both a sensor and android support are available to sense device tilt
+	 */
+	public boolean isTiltSensingPossible() {
+		return 	isOrientationSensor() &&
+				CommonUtils.isFroyoPlus();
+	}
 	
     /**
      * Returns true if at least one Orientation sensor is available

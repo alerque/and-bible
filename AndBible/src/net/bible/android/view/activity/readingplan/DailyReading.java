@@ -9,11 +9,13 @@ import net.bible.android.control.readingplan.ReadingPlanControl;
 import net.bible.android.control.readingplan.ReadingStatus;
 import net.bible.android.view.activity.base.CustomTitlebarActivityBase;
 import net.bible.android.view.activity.base.Dialogs;
+import net.bible.service.common.CommonUtils;
 import net.bible.service.readingplan.OneDaysReadingsDto;
 
 import org.apache.commons.lang.StringUtils;
 import org.crosswire.jsword.book.Book;
 import org.crosswire.jsword.passage.Key;
+import org.crosswire.jsword.versification.BookName;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -43,7 +45,7 @@ public class DailyReading extends CustomTitlebarActivityBase {
 	private TextView mDayView;
 	private TextView mDateView;
 //	private TextView mStatusMsgView; //unused
-	private List<ImageTickOnOff> mImageTickOnOffList;
+	private List<ImageView> mImageTickList;
 	private Button mDoneButton;
 	
 	private int mDay;
@@ -92,7 +94,11 @@ public class DailyReading extends CustomTitlebarActivityBase {
 	        mDoneButton = (Button)findViewById(R.id.doneButton);
 //	        mStatusMsgView =  (TextView)findViewById(R.id.status_message);
 	        
-	        mImageTickOnOffList = new ArrayList<ImageTickOnOff>();
+	        mImageTickList = new ArrayList<ImageView>();
+
+	        // show short book name to save space if Portrait
+			boolean fullBookNameSave = BookName.isFullBookName();
+			BookName.setFullBookName(!CommonUtils.isPortrait());
 	        
 	        TableLayout layout = (TableLayout)findViewById(R.id.reading_container);
 	        for (int i=0; i<mReadings.getNumReadings(); i++) {
@@ -100,10 +106,7 @@ public class DailyReading extends CustomTitlebarActivityBase {
 	            View child = getLayoutInflater().inflate(R.layout.reading_plan_one_reading, null);
 	
 	            // Ticks
-	            ImageTickOnOff imageTickOnOff = new ImageTickOnOff();
-	            imageTickOnOff.unticked = (ImageView)child.findViewById(R.id.tick_off);
-	            imageTickOnOff.ticked = (ImageView)child.findViewById(R.id.tick_on);
-	            mImageTickOnOffList.add(imageTickOnOff);
+	            mImageTickList.add((ImageView)child.findViewById(R.id.tick));
 	            
 	            // Passage description
 	            TextView rdgText = (TextView)child.findViewById(R.id.passage);
@@ -130,6 +133,9 @@ public class DailyReading extends CustomTitlebarActivityBase {
 	            layout.addView(child, readingNo);
 	        }
 	
+			// restore full book name setting
+			BookName.setFullBookName(fullBookNameSave);
+
 	        updateTicksAndDone();
 	        
 	        // Speak All
@@ -137,7 +143,7 @@ public class DailyReading extends CustomTitlebarActivityBase {
 		        View child = getLayoutInflater().inflate(R.layout.reading_plan_one_reading, null);
 		
 		        // hide the tick
-		        ImageView tick = (ImageView)child.findViewById(R.id.tick_off);
+		        ImageView tick = (ImageView)child.findViewById(R.id.tick);
 		        tick.setVisibility(View.INVISIBLE);
 		        
 		        // Passage description
@@ -221,23 +227,27 @@ public class DailyReading extends CustomTitlebarActivityBase {
     
     public void onDone(View view) {
     	Log.i(TAG, "Done");
-    	
-    	// do not add to History list because it will just redisplay same page
-    	setIntegrateWithHistoryManager(false);
-    	
-    	// all readings must be ticked for this to be enabled
-    	mReadingPlanControl.done(mReadings.getReadingPlanInfo(), mDay);
-    	
-    	//if user is behind then go to next days readings
-    	if (mReadingPlanControl.isDueToBeRead(mReadings.getReadingPlanInfo(), mDay+1)) {
-    		onNext(null);
-    	} else {
-    		// else exit
-        	finish();
-    	}
-
-    	// if we move away then add to history list
-    	setIntegrateWithHistoryManager(true);
+    	try {
+	    	// do not add to History list because it will just redisplay same page
+	    	setIntegrateWithHistoryManager(false);
+	    	
+	    	// all readings must be ticked for this to be enabled
+	    	mReadingPlanControl.done(mReadings.getReadingPlanInfo(), mDay);
+	    	
+	    	//if user is behind then go to next days readings
+	    	if (mReadingPlanControl.isDueToBeRead(mReadings.getReadingPlanInfo(), mDay+1)) {
+	    		onNext(null);
+	    	} else {
+	    		// else exit
+	        	finish();
+	    	}
+	
+	    	// if we move away then add to history list
+	    	setIntegrateWithHistoryManager(true);
+        } catch (Exception e) {
+        	Log.e(TAG, "Error when Done daily reading", e);
+        	Dialogs.getInstance().showErrorMsg(R.string.error_occurred);
+        }
     }
     
     /** allow activity to enhance intent to correctly restore state */
@@ -263,25 +273,18 @@ public class DailyReading extends CustomTitlebarActivityBase {
 	private void updateTicksAndDone() {
 		ReadingStatus status = mReadingPlanControl.getReadingStatus(mDay);
 		
-		for (int i=0; i<mImageTickOnOffList.size(); i++) {
-			ImageTickOnOff imageTickOnOff = mImageTickOnOffList.get(i);
+		for (int i=0; i<mImageTickList.size(); i++) {
+			ImageView imageTick = mImageTickList.get(i);
 			if (status.isRead(i)) {
-				imageTickOnOff.ticked.setVisibility(View.VISIBLE);
-				imageTickOnOff.unticked.setVisibility(View.GONE);
+				imageTick.setImageResource(R.drawable.btn_check_buttonless_on);
 			} else {
-				imageTickOnOff.ticked.setVisibility(View.GONE);
-				imageTickOnOff.unticked.setVisibility(View.VISIBLE);
+				imageTick.setImageResource(R.drawable.btn_check_buttonless_off);
 			}
 		}
 		
 		mDoneButton.setEnabled(status.isAllRead());
 	}
 	
-	private static class ImageTickOnOff {
-		private ImageView unticked;
-		private ImageView ticked;
-	}
-
     /** Override Doc & Page header buttons to show reading plans and days lists.
      *  If any of the other buttons are pressed then finish and allow switch back to standard WebView
      * 
@@ -329,6 +332,8 @@ public class DailyReading extends CustomTitlebarActivityBase {
     	return suggestedDoc;
     }
 
+    //TODO move the below up to more general parent class
+    
     //TODO prevent Strongs button being shown
 	protected void updatePageTitle() {
 		// shorten plan code and show it in doc button

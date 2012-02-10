@@ -1,13 +1,10 @@
 package net.bible.service.history;
 
 import net.bible.android.control.page.CurrentPageManager;
-import net.bible.android.view.activity.base.CurrentActivityHolder;
-import net.bible.android.view.activity.page.MainBibleActivity;
 
 import org.crosswire.jsword.book.Book;
 import org.crosswire.jsword.passage.Key;
 
-import android.app.Activity;
 import android.util.Log;
 
 /**
@@ -37,13 +34,6 @@ public class KeyHistoryItem implements HistoryItem {
 	@Override
 	public void revertTo() {
 		CurrentPageManager.getInstance().setCurrentDocumentAndKeyAndOffset(document, key, yOffsetRatio);
-
-		// finish current activity if not the Main screen
-		Activity currentActivity = CurrentActivityHolder.getInstance().getCurrentActivity();
-		if (!(currentActivity instanceof MainBibleActivity)) {
-			currentActivity.finish();
-		}
-
 	}
 
 	
@@ -77,6 +67,7 @@ public class KeyHistoryItem implements HistoryItem {
 		return result;
 	}
 
+	//TODO use Book.equals and Key.equals in the below
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -88,6 +79,9 @@ public class KeyHistoryItem implements HistoryItem {
 		KeyHistoryItem other = (KeyHistoryItem) obj;
 		if (document == null) {
 			if (other.document != null)
+				return false;
+		} else if (document.getInitials() == null) {
+			if (other.document.getInitials() != null)
 				return false;
 		} else if (!document.getInitials().equals(other.document.getInitials()))
 			return false;

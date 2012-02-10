@@ -4,11 +4,13 @@ import net.bible.android.activity.R;
 import net.bible.android.control.BibleContentManager;
 import net.bible.android.control.ControlFactory;
 import net.bible.android.control.PassageChangeMediator;
+import net.bible.android.control.event.apptobackground.AppToBackgroundEvent;
+import net.bible.android.control.event.apptobackground.AppToBackgroundListener;
 import net.bible.android.control.page.CurrentPageManager;
 import net.bible.android.control.page.PageControl;
+import net.bible.android.view.activity.base.CurrentActivityHolder;
 import net.bible.android.view.activity.base.CustomTitlebarActivityBase;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.util.Log;
@@ -42,12 +44,16 @@ public class MainBibleActivity extends CustomTitlebarActivityBase {
 	// detect swipe left/right
 	private GestureDetector gestureDetector;
 	private BibleGestureListener gestureListener;
+
+	private boolean mWholeAppWasInBackground = false;
 	
 	private long lastContextMenuCreateTimeMillis;
 
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
+		Log.i(TAG, "Creating MainBibleActivity");
+
         super.onCreate(savedInstanceState, true);
         
         setContentView(R.layout.main_bible_view);
@@ -64,11 +70,17 @@ public class MainBibleActivity extends CustomTitlebarActivityBase {
     	mainMenuCommandHandler = new MenuCommandHandler(this);
     	
         PassageChangeMediator.getInstance().setMainBibleActivity(MainBibleActivity.this);
-        
-        restoreState();
 
-    	// initialise title etc
-    	onPassageChanged();
+        // force the screen to be populated
+        bibleContentManager.updateText(true);
+
+    	// need to know when app is returned to foreground to check the screen colours
+    	CurrentActivityHolder.getInstance().addAppToBackgroundListener(new AppToBackgroundListener() {
+			@Override
+			public void applicationNowInBackground(AppToBackgroundEvent e) {
+				mWholeAppWasInBackground = true;
+			}
+		});
     }
 
     /** called if the app is re-entered after returning from another app.
@@ -78,9 +90,13 @@ public class MainBibleActivity extends CustomTitlebarActivityBase {
     protected void onRestart() {
     	super.onRestart();
 
-    	// colour may need to change which affects View colour and html
-    	documentViewManager.getDocumentView().applyPreferenceSettings();
-		bibleContentManager.updateText(true);
+    	if (mWholeAppWasInBackground) {
+			mWholeAppWasInBackground = false;
+	    	// colour may need to change which affects View colour and html
+	    	if (documentViewManager.getDocumentView().changeBackgroundColour()) {
+	    		bibleContentManager.updateText(true);
+	    	}
+    	}
     }
 
     /** adding android:configChanges to manifest causes this method to be called on flip, etc instead of a new instance and onCreate, which would cause a new observer -> duplicated threads
@@ -139,16 +155,12 @@ public class MainBibleActivity extends CustomTitlebarActivityBase {
     	Log.d(TAG, "Activity result:"+resultCode);
     	super.onActivityResult(requestCode, resultCode, data);
     	
-    	boolean handled = mainMenuCommandHandler.restartIfRequiredOnReturn(requestCode);
-    	
-    	if (handled || mainMenuCommandHandler.isDisplayRefreshRequired(requestCode)) {
+    	if (mainMenuCommandHandler.restartIfRequiredOnReturn(requestCode)) {
+    		// restart done in above
+    	} else if (mainMenuCommandHandler.isDisplayRefreshRequired(requestCode)) {
     		preferenceSettingsChanged();
-    		handled = true;
-    	}
-
-    	if (handled || mainMenuCommandHandler.isDocumentChanged(requestCode)) {
+    	} else if (mainMenuCommandHandler.isDocumentChanged(requestCode)) {
     		updateSuggestedDocuments();
-    		handled = true;
     	}
     }
 
@@ -169,13 +181,15 @@ public class MainBibleActivity extends CustomTitlebarActivityBase {
 		documentViewManager.getDocumentView().save();
     }
     
-    /** called just before starting work to change teh current passage
+    /** called just before starting work to change the current passage
      */
     public void onPassageChangeStarted() {
     	runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
 				documentViewManager.buildView();
+				getDocumentViewManager().getDocumentView().changeBackgroundColour();
+				
 				setProgressBar(true);
 		    	setPageTitleVisible(false);
 			}
@@ -211,33 +225,11 @@ public class MainBibleActivity extends CustomTitlebarActivityBase {
     }
     
     @Override
-	protected void onPause() {
-    	//TODO do this at the application level because these prefs are not activity specific
-    	Log.i(TAG, "Saving instance state");
-		super.onPause();
-    	SharedPreferences settings = getSharedPreferences(TAG, 0);
-		CurrentPageManager.getInstance().saveState(settings);
-
-		// allow webView to stop monitoring tilt 
-		documentViewManager.getDocumentView().pausing();
-	}
-    
-    @Override
     protected void onResume() {
     	super.onResume();
 
-    	// allow webView to start monitoring tilt 
-		documentViewManager.getDocumentView().resuming();
-    }
-
-    private void restoreState() {
-    	try {
-        	Log.i(TAG, "Restore instance state");
-        	SharedPreferences settings = getSharedPreferences(TAG, 0);
-    		CurrentPageManager.getInstance().restoreState(settings);
-    	} catch (Exception e) {
-    		Log.e(TAG, "Restore error", e);
-    	}
+    	// allow webView to start monitoring tilt by setting focus which causes tilt-scrol to resume 
+		documentViewManager.getDocumentView().asView().requestFocus();
     }
 
     @Override

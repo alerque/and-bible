@@ -18,6 +18,7 @@ import org.crosswire.jsword.passage.Key;
 
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.util.Log;
 
 /** Control status of reading plans
  * 
@@ -32,6 +33,8 @@ public class ReadingPlanControl {
 	
 	private static final String READING_PLAN = "reading_plan";
 	private static final String READING_PLAN_DAY_EXT = "_day";
+	
+	private static final String TAG = "ReadingPlanControl";
 	
 	private ReadingStatus readingStatus;
 	
@@ -110,12 +113,14 @@ public class ReadingPlanControl {
 	public long getDueDay(ReadingPlanInfoDto planInfo) {
 		Date today = CommonUtils.getTruncatedDate();
 		Date startDate = planInfo.getStartdate();
+		// on final day, after done the startDate will be null
 		if (startDate==null) {
 			return 0;
 		}
 		
 		// should not need to round as we use truncated dates, but safety first
-		int diffInDays = Math.round(today.getTime() - startDate.getTime())/(1000*60*60*24);
+		long diffInDays = (today.getTime() - startDate.getTime())/(1000*60*60*24);
+		Log.d(TAG, "Days diff between today and start:"+diffInDays);
 		
 		// if diff is zero then we are on day 1 so add 1
 		return diffInDays+1;
@@ -131,7 +136,7 @@ public class ReadingPlanControl {
 			getReadingStatus(day).delete();
 			
 			if (readingPlanDao.getNumberOfPlanDays(getCurrentPlanCode()) == day) {
-				// last plan day is just Done
+				// last plan day is just Done so clear all plan status
 				reset(planInfo);
 			} else if (getCurrentPlanDay()==day){
 				// move to next plan day
